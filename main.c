@@ -283,6 +283,7 @@ void CheckRetCode(uint32_t retCode,uint32_t lineNumber,char * fileName,uint8_t m
 			while(1){}														// stays here forever						
     }
   }
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -342,7 +343,7 @@ uint32_t HAL_GetTick(void)
 int main(void)
 {	
 	SystemClock_Config();
-	
+	SystemCoreClockUpdate();
 	EventRecorderInitialize(EventRecordAll,0);
 	EventRecorderDisable(EventRecordAPI, 0xF1, 0xF1); // remove Kernel messages
 	EventRecorderDisable(EventRecordAll, 0xF4, 0xF4); // remove EventFlag messages
