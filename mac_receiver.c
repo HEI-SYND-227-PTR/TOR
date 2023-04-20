@@ -41,3 +41,13 @@ void MacReceiver(void *argument)
 	}
 
 }
+
+uint8_t createStatus(uint8_t checksum, bool_t Read, bool_t Ack)
+{
+		return (checksum << 2 |  Ack | Read << 1);	
+}
+
+uint16_t createControl(uint8_t destSapi, uint8_t destAddr, uint8_t srcSapi, uint8_t srcAdrr)
+{
+		return ;	
+}

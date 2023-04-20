@@ -86,6 +86,8 @@ extern struct TOKENINTERFACE gTokenInterface;
 #define AUDIO_ERROR_EVT 		0x0040			// audio error to play
 #define AUDIO_CLOCK_EVT 		0x0080			// audio clock to play
 
+
+
 //--------------------------------------------------------------------------------
 // types of messages transmitted in the queues
 //--------------------------------------------------------------------------------

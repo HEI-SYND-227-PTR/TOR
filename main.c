@@ -39,9 +39,13 @@ osMessageQueueId_t queue_timeS_id;
 osMessageQueueId_t queue_lcd_id;
 osMessageQueueId_t queue_keyboard_id;
 osMessageQueueId_t queue_usartR_id;
+osMessageQueueId_t queue_macB_id;
 
 const osMessageQueueAttr_t queue_macR_attr = {
 	.name = "MAC_RECEIVER"  	
+};
+const osMessageQueueAttr_t queue_macB_attr = {
+	.name = "MAC_BUFFER"  	
 };
 const osMessageQueueAttr_t queue_macS_attr = {
 	.name = "MAC_SENDER  "  	
@@ -376,6 +380,8 @@ int main(void)
 	//------------------------------------------------------------------------------
 	// Create queues
 	//------------------------------------------------------------------------------	
+	
+	queue_macB_id = osMessageQueueNew(6,sizeof(uint32_t),&queue_macB_attr); 	
 	queue_macR_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_macR_attr); 	
 	queue_phyS_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_phyS_attr); 	
 	queue_macS_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_macS_attr); 	
