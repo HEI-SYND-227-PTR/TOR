@@ -11,7 +11,7 @@
 #include <stdio.h>    
 #include <stdbool.h>
 #include "gfx.h"
-#include "gui.h"
+#include "gui.h"	
 
 //--------------------------------------------------------------------------------
 // Constants to change the system behaviour
@@ -38,6 +38,7 @@
 extern GListener 	gl;
 extern osMemoryPoolId_t memPool;
 extern osThreadId_t phy_rec_id;
+extern osMessageQueueId_t queue_macB_id;
 extern osMessageQueueId_t	queue_macR_id;
 extern osMessageQueueId_t	queue_phyS_id;
 extern osMessageQueueId_t	queue_dbg_id;
@@ -56,6 +57,53 @@ extern osEventFlagsId_t  	eventFlag_id;
 void CheckRetCode(uint32_t retCode,uint32_t lineNumber,char * fileName,uint8_t mode);
 void DebugFrame(char * stringP);
 void DebugMacFrame(uint8_t preChar,uint8_t * stringP);
+
+//--------------------------------------------------------------------------------
+// The format of the data frame
+//--------------------------------------------------------------------------------
+typedef struct Control
+{
+	// will usually occupy 2 bytes:
+	// 3 bits: value of dsap
+	// 4 bits: value of daddr
+	// 1 bit: empty
+	// 3 bits: value of ssap
+	// 4 bits: value of saddr
+	// 1 bit: empty
+	unsigned dsap : 3, daddr : 4 , :1 ,ssap : 3, saddr : 4 , :1 ;
+}Control;
+
+typedef struct Status
+{
+	// will usually occupy 1 byte:
+	// 1 bit: value of ack
+	// 1 bit: value of read
+	// 6 bits: value of cs
+	unsigned ack : 1, read: 1, cs : 6;
+}Status;
+
+typedef union uStatus
+{
+	uint8_t status;
+	Status status_field;
+}uStatus;
+
+typedef union uControl
+{
+	uint16_t control;
+	Control control_field;
+}uControl;
+
+typedef struct DataFrame
+{
+	uStatus s;
+	uint8_t* dataPtr;
+	uint8_t length;
+	uControl c;
+}DataFrame;
+
+
+
 
 //--------------------------------------------------------------------------------
 // structure for system usage
@@ -108,6 +156,8 @@ enum msgType_e
 	FROM_PHY,								///< a message arriving from physical layer
 	TO_PHY									///< a message sent to physical layer
 };
+void fromStructToByteArray(DataFrame f,  uint8_t* returnPtr);
+DataFrame fromByteArrayToStruct(uint8_t * dataPtr);
 
 //--------------------------------------------------------------------------------
 // The queue message structure

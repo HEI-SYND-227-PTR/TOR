@@ -35,7 +35,7 @@ uint8_t state;
 //------------------------------------------------------------------------------
 uint8_t ScanCodeAnalyse(uint8_t scan)
 {
-      switch(scan)
+      switch(scan) 
       {
        /*---------------------------------------------------------------------------*/
        case 0xF0: release = TRUE; return 0   ; /* release key code                  */

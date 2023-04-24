@@ -21,16 +21,10 @@ void MacReceiver(void *argument)
 			
 			if (dataptr[0] == TOKEN_TAG)
 			{
-				uint8_t* tkDataBack = osMemoryPoolAlloc(memPool,osWaitForever);
-				printf("A TOKEN WAS RECIVED \r\n");
-				for(int i = 1; i <= 16 ; i++)
-				{
-					tkDataBack[i-1] = dataptr[i];
-				}
 				
 					// creation of a message
 					myMessage.type = TOKEN;
-					myMessage.anyPtr = tkDataBack;			
+					myMessage.anyPtr = message.anyPtr;			
 				
 					
 					returnPHY = osMessageQueuePut(queue_macS_id,&myMessage,NULL,osWaitForever);
@@ -42,12 +36,5 @@ void MacReceiver(void *argument)
 
 }
 
-uint8_t createStatus(uint8_t checksum, bool_t Read, bool_t Ack)
-{
-		return (checksum << 2 |  Ack | Read << 1);	
-}
 
-uint16_t createControl(uint8_t destSapi, uint8_t destAddr, uint8_t srcSapi, uint8_t srcAdrr)
-{
-		return ;	
-}
+
