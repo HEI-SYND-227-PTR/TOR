@@ -11,6 +11,7 @@ void MacSender(void *argument)
 	struct queueMsg_t message;
 	struct queueMsg_t myMessage = {0};
 	osStatus_t returnPHY;
+	DataFrame f;
 	
 	//Read The macR queue
 	while(1)
@@ -21,7 +22,7 @@ void MacSender(void *argument)
 		// if the message is of type DATA_IND
 		if(message.type == DATABACK)
 		{		
-				DataFrame f = fromByteArrayToStruct(message.anyPtr);
+				f = fromByteArrayToStruct(message.anyPtr);
 				if(f.s.status_field.ack != 1 || f.s.status_field.read != 1)
 				{
 					// there is a problem we need to re send
@@ -44,21 +45,21 @@ void MacSender(void *argument)
 		}
 		if(message.type == DATA_IND)
 		{			
-				DataFrame f;
+			
 				
 			
-				f.c.control_field.ssap = gTokenInterface.station_list[MYADDRESS];
+				f.c.control_field.ssap = gTokenInterface.station_list[MYADDRESS-1];
 				f.c.control_field.saddr = MYADDRESS;
 				f.c.control_field.dsap = message.sapi;
 				f.c.control_field.daddr = message.addr;
 				f.dataPtr = message.anyPtr;
-				f.length = sizeof(*((uint8_t*) message.anyPtr));			
+				f.length = strlen(message.anyPtr);			
 				
 				uint8_t* ptr;
 				fromStructToByteArray(f, ptr);
 			
 				memory = osMemoryPoolAlloc(memPool,osWaitForever);
-				memcpy(memory , &ptr ,f.length+4);
+				memcpy(((uint8_t *)memory) , ptr ,f.length+4);
 			
 				myMessage.type = TO_PHY;
 				myMessage.anyPtr = memory;

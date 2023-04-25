@@ -425,14 +425,15 @@ void fromStructToByteArray(DataFrame f, uint8_t* returnPtr)
 	sum = returnPtr[0] + returnPtr[1] + returnPtr[2];
 	for(int i = f.length; i > 0; i-- )
 	{
-		returnPtr[2 + f.length - i] = f.dataPtr[i];
-		sum += f.dataPtr[i];
+		returnPtr[3 + f.length - i] = f.dataPtr[i-1];
+		sum += f.dataPtr[i-1];
 	}
 	f.s.status_field.ack = 0;
 	f.s.status_field.read = 0;
 	f.s.status_field.cs = sum;
 	
-	returnPtr[4+f.length] =  f.s.status;	
+	
+	returnPtr[3+f.length] =  f.s.status;	
 }
 
 DataFrame fromByteArrayToStruct(uint8_t * dataPtr)

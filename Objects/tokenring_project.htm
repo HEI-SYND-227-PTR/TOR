@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\Objects\tokenring_project.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\Objects\tokenring_project.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Mon Apr 24 16:06:49 2023
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Tue Apr 25 11:35:35 2023
 <BR><P>
 <H3>Maximum Stack Usage =        576 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1220,6 +1220,7 @@ Global Symbols
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = strlen
 </UL>
 <BR>[Called By]<UL><LI><a href="#[25e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;gwinSetText
+<LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MacSender
 <LI><a href="#[9b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD
 <LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ChatSender
 </UL>
@@ -3092,8 +3093,8 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> main.o(i.main)
 </UL>
-<P><STRONG><a name="[95]"></a>MacSender</STRONG> (Thumb, 570 bytes, Stack size 48 bytes, mac_sender.o(i.MacSender))
-<BR><BR>[Stack]<UL><LI>Max Depth = 296 + Unknown Stack Size
+<P><STRONG><a name="[95]"></a>MacSender</STRONG> (Thumb, 584 bytes, Stack size 56 bytes, mac_sender.o(i.MacSender))
+<BR><BR>[Stack]<UL><LI>Max Depth = 304 + Unknown Stack Size
 <LI>Call Chain = MacSender &rArr; fromByteArrayToStruct &rArr; malloc &rArr; _malloc_internal &rArr; __Heap_Full &rArr; __Heap_ProvideMemory &rArr; _free_internal &rArr; _mutex_release &rArr; os_kernel_is_active &rArr; osKernelGetState &rArr; svcRtxKernelGetState &rArr; EvrRtxKernelGetState &rArr; EventRecord2 &rArr; EventRecordItem
 </UL>
 <BR>[Calls]<UL><LI><a href="#[18e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osMemoryPoolAlloc
@@ -3105,6 +3106,7 @@ Global Symbols
 <LI><a href="#[18b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;CheckRetCode
 <LI><a href="#[265]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memclr
 <LI><a href="#[190]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memcpy
+<LI><a href="#[18f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;strlen
 <LI><a href="#[143]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> main.o(i.main)
@@ -3718,7 +3720,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MacSender
 </UL>
 
-<P><STRONG><a name="[264]"></a>fromStructToByteArray</STRONG> (Thumb, 104 bytes, Stack size 24 bytes, main.o(i.fromStructToByteArray))
+<P><STRONG><a name="[264]"></a>fromStructToByteArray</STRONG> (Thumb, 108 bytes, Stack size 24 bytes, main.o(i.fromStructToByteArray))
 <BR><BR>[Stack]<UL><LI>Max Depth = 24<LI>Call Chain = fromStructToByteArray
 </UL>
 <BR>[Called By]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MacSender
