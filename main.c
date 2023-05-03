@@ -428,27 +428,32 @@ void fromStructToByteArray(DataFrame f, uint8_t* returnPtr)
 		returnPtr[3 + f.length - i] = f.dataPtr[i-1];
 		sum += f.dataPtr[i-1];
 	}
-	f.s.status_field.ack = 0;
-	f.s.status_field.read = 0;
+	if(f.c.control_field.daddr == 14)
+	{
+			f.s.status_field.ack = 1;
+			f.s.status_field.read = 1;
+	}
+	else
+	{
+		f.s.status_field.ack = 0;
+		f.s.status_field.read = 0;
+	}
+	
 	f.s.status_field.cs = sum;
 	
 	
 	returnPtr[3+f.length] =  f.s.status;	
 }
 
-DataFrame fromByteArrayToStruct(uint8_t * dataPtr)
+void fromByteArrayToStruct(uint8_t * dataPtr, DataFrame* frame)
 {
-	DataFrame frame; 
-	frame.c.control = dataPtr[0] + ((uint16_t)(dataPtr[1]<<8));
-	frame.length = dataPtr[2];
 	
-	uint8_t data[frame.length];
-	for(int i = frame.length; i > 0; i-- )
-	{
-		data[i-frame.length] = dataPtr[2+i];
-	}
-	frame.dataPtr = data;
-	frame.s.status = dataPtr[frame.length+4];
+	frame->c.control = dataPtr[1] + ((uint16_t)(dataPtr[0]<<8));
+	frame->length = dataPtr[2];
 	
-	return frame;
+	
+	frame->dataPtr = &dataPtr[3];
+	frame->s.status = dataPtr[frame->length+3];
+	
+
 }

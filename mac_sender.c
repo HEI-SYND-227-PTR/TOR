@@ -7,12 +7,17 @@
 
 void MacSender(void *argument)
 {
-	uint8_t* memory ;
+
+
+	uint8_t* memory;
 	struct queueMsg_t message;
 	struct queueMsg_t myMessage = {0};
 	osStatus_t returnPHY;
 	DataFrame f;
-	
+	uint8_t ttl = 0;
+	uint8_t * original;
+	uint8_t * copy;
+	uint8_t * token;
 	//Read The macR queue
 	while(1)
 	{
@@ -22,84 +27,89 @@ void MacSender(void *argument)
 		// if the message is of type DATA_IND
 		if(message.type == DATABACK)
 		{		
-				f = fromByteArrayToStruct(message.anyPtr);
-				if(f.s.status_field.ack != 1 || f.s.status_field.read != 1)
+				fromByteArrayToStruct(message.anyPtr, &f);
+				if((f.s.status_field.ack != 1 || f.s.status_field.read != 1) && ttl < 4)
 				{
+					ttl++;
 					// there is a problem we need to re send
 					
-					myMessage.type = TO_PHY;
-					myMessage.anyPtr = memory;
-	
-			
+				
+					osMemoryPoolFree(memPool,message.anyPtr);
+					copy = osMemoryPoolAlloc(memPool,osWaitForever);
+   				memcpy(copy,original,80);
+					myMessage.anyPtr = copy;			
 					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
 					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);	
 				}
 				else
 				{
+					if(ttl >= 4)
+					{
+						myMessage.type = MAC_ERROR;
+						myMessage.anyPtr = message.anyPtr;			
+						myMessage.addr = message.addr;
+						
+						returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,osWaitForever);
+						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+					}
+							
 					// we can forget the message 
-					osMemoryPoolFree(memPool,memory);
-				}
-	
-					
+					osMemoryPoolFree(memPool,original);
+					osMemoryPoolFree(memPool,message.anyPtr);
 			
+					
+					// creation of a message
+					myMessage.type = TO_PHY;
+					myMessage.anyPtr = token;			
+		
+					
+					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
+					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+
+					ttl = 0;					
+				}
 		}
 		if(message.type == DATA_IND)
-		{			
-			
-				
-			
-				f.c.control_field.ssap = gTokenInterface.station_list[MYADDRESS-1];
+		{				
+				f.c.control_field.ssap = (gTokenInterface.station_list[MYADDRESS]>>1);
 				f.c.control_field.saddr = MYADDRESS;
 				f.c.control_field.dsap = message.sapi;
 				f.c.control_field.daddr = message.addr;
 				f.dataPtr = message.anyPtr;
 				f.length = strlen(message.anyPtr);			
 				
-				uint8_t* ptr;
-				fromStructToByteArray(f, ptr);
-			
-				memory = osMemoryPoolAlloc(memPool,osWaitForever);
-				memcpy(((uint8_t *)memory) , ptr ,f.length+4);
-			
+			   memory = osMemoryPoolAlloc(memPool,osWaitForever);
+
 				myMessage.type = TO_PHY;
+				fromStructToByteArray(f, memory);
 				myMessage.anyPtr = memory;
-	
 			
-			
-				returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
+				returnPHY = osMessageQueuePut(queue_macB_id,&myMessage,NULL,osWaitForever);
 				CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);	
 				
+				osMemoryPoolFree(memPool,message.anyPtr);
+
 		}
 		if(message.type == TOKEN) 
 		{		
-				uint8_t* dataptr;
-				dataptr = message.anyPtr;
-				
+
 				// we need to update the list of connected stations 
-				for(int i = 0; i <= 15 ; i++)
+				for(int i = 0; i <= 14 ; i++)
 				{
-					gTokenInterface.station_list[i] = dataptr[i+1];
-//					printf("station %d data : 0x%02x \r\n", i+1, dataptr[i]);
+					gTokenInterface.station_list[i] = ((uint8_t *)message.anyPtr)[i+1];
+					//printf("station %d data : 0x%02x \r\n", i+1, ((uint8_t *)message.anyPtr)[i]);
 				}
-				
+				token = message.anyPtr;
 					
-					// putting zeros everywhere
-					uint8_t* ptk;
-					memset(ptk,0,17);
-					// token header
-					ptk[0] = TOKEN_TAG;
-					// putting the correct value inside the token
-					//	time sapi is alwais active	
-					ptk[MYADDRESS] = (1 << TIME_SAPI);
-					// if we are connected
+			
 					if(gTokenInterface.connected)
 					{
 						// chat sapi must be active
-						ptk[MYADDRESS] |= (1 << CHAT_SAPI) ;
+						((uint8_t *)message.anyPtr)[MYADDRESS+1] |= (1 << CHAT_SAPI) ;
 					}
 					// creation of a message
 					myMessage.type = TOKEN_LIST;
-					myMessage.anyPtr = ptk;
+
 					
 					//updating the que of the LCD
 					returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,osWaitForever);
@@ -109,10 +119,14 @@ void MacSender(void *argument)
 			
 					// Trying to read the Buffer queue 
 					osStatus_t  bufferStatus =	osMessageQueueGet(queue_macB_id,&Buffer,NULL,0);
+					original = Buffer.anyPtr;
 					// if message queue is empty 
 					if (bufferStatus == osOK)
 					{
 						// sending the messages inside of the buffer 
+						copy = osMemoryPoolAlloc(memPool,osWaitForever);
+						memcpy(copy,Buffer.anyPtr,80);
+						Buffer.anyPtr = copy;
 						returnPHY = osMessageQueuePut(queue_phyS_id,&Buffer,NULL,osWaitForever);
 						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 					}
@@ -122,7 +136,8 @@ void MacSender(void *argument)
 						returnPHY = osMessageQueuePut(queue_phyS_id,&message,NULL,osWaitForever);
 						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 					}
-			
+					
+
 		}
 				
 		if(message.type == START)
@@ -148,19 +163,19 @@ void MacSender(void *argument)
 					ptk[0] = TOKEN_TAG;
 					// putting the correct value inside the token
 					//	time sapi is alwais active	
-					ptk[MYADDRESS] = (1 << TIME_SAPI);
+					ptk[MYADDRESS+1] = (1 << TIME_SAPI);
 					// if we are connected
 					if(gTokenInterface.connected)
 					{
 						// chat sapi must be active
-						ptk[MYADDRESS] |= (1 << CHAT_SAPI) ;
+						ptk[MYADDRESS+1] |= (1 << CHAT_SAPI) ;
 					}
 					
 				
 					// creation of a message
 					myMessage.type = TO_PHY;
 					myMessage.anyPtr = ptk;			
-		
+	
 					
 					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
 					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);

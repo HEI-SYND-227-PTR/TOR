@@ -157,7 +157,7 @@ enum msgType_e
 	TO_PHY									///< a message sent to physical layer
 };
 void fromStructToByteArray(DataFrame f,  uint8_t* returnPtr);
-DataFrame fromByteArrayToStruct(uint8_t * dataPtr);
+void fromByteArrayToStruct(uint8_t * dataPtr, DataFrame* frame);
 
 //--------------------------------------------------------------------------------
 // The queue message structure
