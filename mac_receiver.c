@@ -8,8 +8,7 @@
 bool checkCS(DataFrame f);
 
 void MacReceiver(void *argument)
-{
-	
+{	
 	struct queueMsg_t message;
 	osStatus_t returnPHY;
 	struct queueMsg_t myMessage = {0};
@@ -21,29 +20,29 @@ void MacReceiver(void *argument)
 		switch(message.type)
 		{
 			case FROM_PHY: 
-			{
-			
-			
+			{			
 				if (((uint8_t*)message.anyPtr)[0] == TOKEN_TAG)
 				{
-				
 					// creation of a message
 					myMessage.type = TOKEN;
 					myMessage.anyPtr = message.anyPtr;			
 				
-					
 					returnPHY = osMessageQueuePut(queue_macS_id,&myMessage,NULL,osWaitForever);
+					if(returnPHY != osOK)
+					{
+						osMemoryPoolFree(memPool,message.anyPtr);
+					}
 					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 				}
 				else
 				{
 					
 					 fromByteArrayToStruct(((uint8_t*)message.anyPtr), & frame);
-					// we check if rhe message was from us
-					if(frame.c.control_field.saddr == MYADDRESS )
+					// we check if the message was from us
+					if(frame.c.control_field.saddr == MYADDRESS)
 					{
 						// self message
-						if(frame.c.control_field.daddr == MYADDRESS)
+						if(frame.c.control_field.daddr == MYADDRESS || frame.c.control_field.daddr == BROADCAST_ADDRESS)
 						{
 							// we do the same thing as a normal message but instead we re-send the 
 							// message in DATABACK
@@ -59,46 +58,50 @@ void MacReceiver(void *argument)
 								frame.s.status_field.ack = 1;
 							
 								myMessage.type = DATA_IND;
+								frame.dataPtr[frame.length] = 0x00;
 								myMessage.anyPtr = frame.dataPtr;		
 								myMessage.addr = frame.c.control_field.saddr;						
 								myMessage.sapi = frame.c.control_field.ssap;
 							
 								// if it is a chat message (0b001 sapi)
-								if(frame.c.control_field.dsap == 0x1)
+								if(frame.c.control_field.dsap == CHAT_SAPI)
 								{
-
-										returnPHY = osMessageQueuePut(queue_chatR_id,&myMessage,NULL,osWaitForever);
+										returnPHY = osMessageQueuePut(queue_chatR_id,&myMessage,NULL,0);
+										if(returnPHY != osOK)
+										{
+											osMemoryPoolFree(memPool,message.anyPtr);
+										}
 										CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 								}
-								// if it is a time message (0b100 sapi)
-								if(frame.c.control_field.dsap == 0x4)
+								// if it is a time message (0b011 sapi)
+								if(frame.c.control_field.dsap == TIME_SAPI)
 								{
-										returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,osWaitForever);
+										returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,0);
+										if(returnPHY != osOK)
+										{
+											osMemoryPoolFree(memPool,message.anyPtr);
+										}
 										CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 								}
-							}	
-								
+							}									
 						
-							uint8_t * ptr = osMemoryPoolAlloc(memPool,osWaitForever);
-							fromStructToByteArray(frame, ptr);
+							fromStructToByteArray(frame, message.anyPtr);
 						
 							myMessage.type = DATABACK;
-							myMessage.anyPtr = ptr;
-		
-				
+							myMessage.anyPtr = message.anyPtr;
 							
-							returnPHY = osMessageQueuePut(queue_macS_id,&myMessage,NULL,osWaitForever);
-							CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);	
-							
-							
+							returnPHY = osMessageQueuePut(queue_macS_id,&myMessage,NULL,0);
+							if(returnPHY != osOK)
+							{
+								osMemoryPoolFree(memPool,message.anyPtr);
+							}					
 						}
 						else
 						{
 							if(!checkCS(frame))
 							{
 								frame.s.status_field.ack = 0;
-							}
-							
+							}						
 								// if so we need to send a databack to MAC sender 
 								// creation of a message
 								myMessage.type = DATABACK;
@@ -106,21 +109,16 @@ void MacReceiver(void *argument)
 								myMessage.addr = frame.c.control_field.saddr;						
 								myMessage.sapi = frame.c.control_field.ssap;
 
-
-
 								returnPHY = osMessageQueuePut(queue_macS_id,&myMessage,NULL,osWaitForever);
+								if(returnPHY != osOK)
+								{
+									osMemoryPoolFree(memPool,message.anyPtr);
+								}
 								CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
-						}
-			
-								
-
-						
-						
-								
-						
+						}	
 					}
 					// we check if the message was for us
-					else if(frame.c.control_field.daddr == MYADDRESS ||frame.c.control_field.daddr == 14)
+					else if(frame.c.control_field.daddr == MYADDRESS ||frame.c.control_field.daddr == BROADCAST_ADDRESS)
 					{
 					
 						frame.s.status_field.read = 1;
@@ -134,55 +132,61 @@ void MacReceiver(void *argument)
 							frame.s.status_field.ack = 1;
 						
 							myMessage.type = DATA_IND;
-							myMessage.anyPtr = frame.dataPtr;		
+							myMessage.anyPtr = frame.dataPtr;	
+							frame.dataPtr[frame.length] = 0x00;							
 							myMessage.addr = frame.c.control_field.saddr;						
 							myMessage.sapi = frame.c.control_field.ssap;
 						
 							// if it is a chat message (0b001 sapi)
-							if(frame.c.control_field.dsap == 0x1)
+							if(frame.c.control_field.dsap == CHAT_SAPI)
 							{
-									returnPHY = osMessageQueuePut(queue_chatR_id,&myMessage,NULL,osWaitForever);
+									returnPHY = osMessageQueuePut(queue_chatR_id,&myMessage,NULL,0);
+									if(returnPHY != osOK)
+									{
+										osMemoryPoolFree(memPool,message.anyPtr);
+									}
 									CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 							}
-							// if it is a time message (0b100 sapi)
-							if(frame.c.control_field.dsap == 0x4)
+							// if it is a time message (0b011 sapi)
+							if(frame.c.control_field.dsap == TIME_SAPI)
 							{
-									returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,osWaitForever);
+									returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,0);
+									if(returnPHY != osOK)
+									{
+										osMemoryPoolFree(memPool,message.anyPtr);
+									}
 									CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 							}
 						}	
-							
+
+						fromStructToByteArray(frame, message.anyPtr);
 					
-								uint8_t * ptr = osMemoryPoolAlloc(memPool,osWaitForever);
-								fromStructToByteArray(frame, ptr);
-							
-								myMessage.type = TO_PHY;
-								myMessage.anyPtr = ptr;
-			
-					
-								
-								returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
-								CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);	
+						myMessage.type = TO_PHY;
+						myMessage.anyPtr = message.anyPtr;
 						
-					
-					
+						returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,0);
+						if(returnPHY != osOK)
+						{
+							osMemoryPoolFree(memPool,message.anyPtr);
+						}
+						
 					}
 					else
 					{
 						myMessage.type = TO_PHY;
 						myMessage.anyPtr = message.anyPtr;
 	
-			
-				
-						returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
+						returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,0);
+						if(returnPHY != osOK)
+						{
+							osMemoryPoolFree(memPool,message.anyPtr);
+						}
 						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);	
 					}
 				}			
-
 			}
 			break;	
 		}	
-	
 	}
 }
 

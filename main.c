@@ -381,7 +381,7 @@ int main(void)
 	// Create queues
 	//------------------------------------------------------------------------------	
 	
-	queue_macB_id = osMessageQueueNew(6,sizeof(struct queueMsg_t),&queue_macB_attr); 	
+	queue_macB_id = osMessageQueueNew(3,sizeof(struct queueMsg_t),&queue_macB_attr); 	
 	queue_macR_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_macR_attr); 	
 	queue_phyS_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_phyS_attr); 	
 	queue_macS_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_macS_attr); 	
@@ -423,28 +423,22 @@ void fromStructToByteArray(DataFrame f, uint8_t* returnPtr)
 	returnPtr[1] = f.c.control;
 	returnPtr[2] = f.length;
 	sum = returnPtr[0] + returnPtr[1] + returnPtr[2];
-	for(int i = f.length; i > 0; i-- )
+	for(int i = 0; i < f.length; i++ )
 	{
-		returnPtr[3 + f.length - i] = f.dataPtr[i-1];
-		sum += f.dataPtr[i-1];
+		returnPtr[2 + 1 + i] = f.dataPtr[i];
+		sum += f.dataPtr[i];
 	}
 	
-	
 	f.s.status_field.cs = sum;
-	
-	
+		
 	returnPtr[3+f.length] =  f.s.status;	
 }
 
 void fromByteArrayToStruct(uint8_t * dataPtr, DataFrame* frame)
-{
-	
+{	
 	frame->c.control = dataPtr[1] + ((uint16_t)(dataPtr[0]<<8));
-	frame->length = dataPtr[2];
-	
+	frame->length = dataPtr[2];	
 	
 	frame->dataPtr = &dataPtr[3];
 	frame->s.status = dataPtr[frame->length+3];
-	
-
 }

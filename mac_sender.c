@@ -7,8 +7,6 @@
 
 void MacSender(void *argument)
 {
-
-
 	uint8_t* memory;
 	struct queueMsg_t message;
 	struct queueMsg_t myMessage = {0};
@@ -31,14 +29,17 @@ void MacSender(void *argument)
 				if((f.s.status_field.ack != 1 || f.s.status_field.read != 1) && ttl < 4)
 				{
 					ttl++;
-					// there is a problem we need to re send
-					
+					// there is a problem we need to re send					
 				
 					osMemoryPoolFree(memPool,message.anyPtr);
 					copy = osMemoryPoolAlloc(memPool,osWaitForever);
    				memcpy(copy,original,80);
 					myMessage.anyPtr = copy;			
-					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
+					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,0);
+					if(returnPHY != osOK)
+					{
+						osMemoryPoolFree(memPool,copy);
+					}
 					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);	
 				}
 				else
@@ -49,23 +50,23 @@ void MacSender(void *argument)
 						myMessage.anyPtr = message.anyPtr;			
 						myMessage.addr = message.addr;
 						
-						returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,osWaitForever);
+						returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,0);
+						if(returnPHY != osOK)
+						{
+							osMemoryPoolFree(memPool,message.anyPtr);
+						}
 						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 					}
 					else
 					{
 							osMemoryPoolFree(memPool,message.anyPtr);
-					}
-							
+					}							
 					// we can forget the message 
-					osMemoryPoolFree(memPool,original);
-				
-			
+					osMemoryPoolFree(memPool,original);	
 					
 					// creation of a message
 					myMessage.type = TO_PHY;
-					myMessage.anyPtr = token;			
-		
+					myMessage.anyPtr = token;				
 					
 					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
 					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
@@ -82,7 +83,7 @@ void MacSender(void *argument)
 				f.dataPtr = message.anyPtr;
 				f.length = strlen(message.anyPtr);	
 			
-				if(f.c.control_field.daddr == 14)
+				if(f.c.control_field.daddr == BROADCAST_ADDRESS)
 				{
 						f.s.status_field.ack = 1;
 						f.s.status_field.read = 1;
@@ -91,8 +92,7 @@ void MacSender(void *argument)
 				{
 					f.s.status_field.ack = 0;
 					f.s.status_field.read = 0;
-				}
-			
+				}	
 				
 			  memory = osMemoryPoolAlloc(memPool,osWaitForever);
 
@@ -100,23 +100,23 @@ void MacSender(void *argument)
 				fromStructToByteArray(f, memory);
 				myMessage.anyPtr = memory;
 			
-				returnPHY = osMessageQueuePut(queue_macB_id,&myMessage,NULL,osWaitForever);
-				CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);	
+				returnPHY = osMessageQueuePut(queue_macB_id,&myMessage,NULL,0);
+				if(returnPHY != osOK){
+					osMemoryPoolFree(memPool,memory);
+				}
 				
+					
 				osMemoryPoolFree(memPool,message.anyPtr);
-
 		}
 		if(message.type == TOKEN) 
 		{		
-
 				// we need to update the list of connected stations 
 				for(int i = 0; i <= 14 ; i++)
 				{
 					gTokenInterface.station_list[i] = ((uint8_t *)message.anyPtr)[i+1];
 					//printf("station %d data : 0x%02x \r\n", i+1, ((uint8_t *)message.anyPtr)[i]);
 				}
-				token = message.anyPtr;
-					
+				token = message.anyPtr;					
 			
 					if(gTokenInterface.connected)
 					{
@@ -125,7 +125,6 @@ void MacSender(void *argument)
 					}
 					// creation of a message
 					myMessage.type = TOKEN_LIST;
-
 					
 					//updating the que of the LCD
 					returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,osWaitForever);
@@ -144,6 +143,10 @@ void MacSender(void *argument)
 						memcpy(copy,Buffer.anyPtr,80);
 						Buffer.anyPtr = copy;
 						returnPHY = osMessageQueuePut(queue_phyS_id,&Buffer,NULL,osWaitForever);
+						if(returnPHY != osOK)
+						{
+							osMemoryPoolFree(memPool,Buffer.anyPtr);
+						}
 						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 					}
 					else if(bufferStatus == osErrorResource) // the que is empty
@@ -152,8 +155,6 @@ void MacSender(void *argument)
 						returnPHY = osMessageQueuePut(queue_phyS_id,&message,NULL,osWaitForever);
 						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 					}
-					
-
 		}
 				
 		if(message.type == START)
@@ -187,21 +188,14 @@ void MacSender(void *argument)
 					{
 						// chat sapi must be active
 						ptk[MYADDRESS+1] |= (1 << CHAT_SAPI) ;
-					}
-					
-				
+					}			
 					// creation of a message
 					myMessage.type = TO_PHY;
-					myMessage.anyPtr = ptk;			
-	
+					myMessage.anyPtr = ptk;				
 					
 					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
 					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
-			}
-		
-		
+			}		
 		}
 	}
-	
-
 }
