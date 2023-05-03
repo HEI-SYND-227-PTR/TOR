@@ -428,16 +428,7 @@ void fromStructToByteArray(DataFrame f, uint8_t* returnPtr)
 		returnPtr[3 + f.length - i] = f.dataPtr[i-1];
 		sum += f.dataPtr[i-1];
 	}
-	if(f.c.control_field.daddr == 14)
-	{
-			f.s.status_field.ack = 1;
-			f.s.status_field.read = 1;
-	}
-	else
-	{
-		f.s.status_field.ack = 0;
-		f.s.status_field.read = 0;
-	}
+	
 	
 	f.s.status_field.cs = sum;
 	

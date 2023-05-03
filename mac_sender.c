@@ -52,10 +52,14 @@ void MacSender(void *argument)
 						returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,osWaitForever);
 						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 					}
+					else
+					{
+							osMemoryPoolFree(memPool,message.anyPtr);
+					}
 							
 					// we can forget the message 
 					osMemoryPoolFree(memPool,original);
-					osMemoryPoolFree(memPool,message.anyPtr);
+				
 			
 					
 					// creation of a message
@@ -76,9 +80,21 @@ void MacSender(void *argument)
 				f.c.control_field.dsap = message.sapi;
 				f.c.control_field.daddr = message.addr;
 				f.dataPtr = message.anyPtr;
-				f.length = strlen(message.anyPtr);			
+				f.length = strlen(message.anyPtr);	
+			
+				if(f.c.control_field.daddr == 14)
+				{
+						f.s.status_field.ack = 1;
+						f.s.status_field.read = 1;
+				}
+				else
+				{
+					f.s.status_field.ack = 0;
+					f.s.status_field.read = 0;
+				}
+			
 				
-			   memory = osMemoryPoolAlloc(memPool,osWaitForever);
+			  memory = osMemoryPoolAlloc(memPool,osWaitForever);
 
 				myMessage.type = TO_PHY;
 				fromStructToByteArray(f, memory);
@@ -143,11 +159,13 @@ void MacSender(void *argument)
 		if(message.type == START)
 		{
 			gTokenInterface.connected = true;
+			
 		}
 		// if the message is of type STOP
 		if(message.type == STOP)
 		{
 			gTokenInterface.connected = false;
+			
 		}
 		// if the message is of type NEW_TOKEN
 		if(message.type == NEW_TOKEN)
@@ -180,6 +198,7 @@ void MacSender(void *argument)
 					returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,osWaitForever);
 					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 			}
+		
 		
 		}
 	}
