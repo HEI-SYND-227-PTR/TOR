@@ -59,6 +59,7 @@ void MacReceiver(void *argument)
 							
 								myMessage.type = DATA_IND;
 								frame.dataPtr[frame.length] = 0x00;
+								frame.length = frame.length +1;
 								myMessage.anyPtr = frame.dataPtr;		
 								myMessage.addr = frame.c.control_field.saddr;						
 								myMessage.sapi = frame.c.control_field.ssap;
@@ -66,22 +67,41 @@ void MacReceiver(void *argument)
 								// if it is a chat message (0b001 sapi)
 								if(frame.c.control_field.dsap == CHAT_SAPI)
 								{
+									if(gTokenInterface.connected == true)
+									{
 										returnPHY = osMessageQueuePut(queue_chatR_id,&myMessage,NULL,0);
 										if(returnPHY != osOK)
 										{
 											osMemoryPoolFree(memPool,message.anyPtr);
 										}
 										CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+									}
+									else
+									{
+										osMemoryPoolFree(memPool,message.anyPtr);
+									}
 								}
 								// if it is a time message (0b011 sapi)
-								if(frame.c.control_field.dsap == TIME_SAPI)
+								else if(frame.c.control_field.dsap == TIME_SAPI)
 								{
-										returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,0);
-										if(returnPHY != osOK)
-										{
-											osMemoryPoolFree(memPool,message.anyPtr);
-										}
-										CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+									returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,0);
+									if(returnPHY != osOK)
+									{
+										osMemoryPoolFree(memPool,message.anyPtr);
+									}
+									CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+								}
+								else
+								{
+									myMessage.type = TO_PHY;
+									myMessage.anyPtr = message.anyPtr;
+	
+									returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,0);
+									if(returnPHY != osOK)
+									{
+									osMemoryPoolFree(memPool,message.anyPtr);
+									}
+									CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);									
 								}
 							}									
 						
@@ -133,29 +153,49 @@ void MacReceiver(void *argument)
 						
 							myMessage.type = DATA_IND;
 							myMessage.anyPtr = frame.dataPtr;	
-							frame.dataPtr[frame.length] = 0x00;							
+							frame.dataPtr[frame.length] = 0x00;
+							frame.length = frame.length +1;							
 							myMessage.addr = frame.c.control_field.saddr;						
 							myMessage.sapi = frame.c.control_field.ssap;
 						
 							// if it is a chat message (0b001 sapi)
 							if(frame.c.control_field.dsap == CHAT_SAPI)
 							{
+								if(gTokenInterface.connected == true)
+								{
 									returnPHY = osMessageQueuePut(queue_chatR_id,&myMessage,NULL,0);
 									if(returnPHY != osOK)
 									{
 										osMemoryPoolFree(memPool,message.anyPtr);
 									}
 									CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+								}
+								else
+								{
+									osMemoryPoolFree(memPool,message.anyPtr);
+								}
 							}
 							// if it is a time message (0b011 sapi)
-							if(frame.c.control_field.dsap == TIME_SAPI)
+							else if(frame.c.control_field.dsap == TIME_SAPI)
 							{
-									returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,0);
-									if(returnPHY != osOK)
-									{
-										osMemoryPoolFree(memPool,message.anyPtr);
-									}
-									CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+								returnPHY = osMessageQueuePut(queue_timeR_id,&myMessage,NULL,0);
+								if(returnPHY != osOK)
+								{
+									osMemoryPoolFree(memPool,message.anyPtr);
+								}
+								CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+							}
+							else
+							{
+								myMessage.type = TO_PHY;
+								myMessage.anyPtr = message.anyPtr;
+
+								returnPHY = osMessageQueuePut(queue_phyS_id,&myMessage,NULL,0);
+								if(returnPHY != osOK)
+								{
+								osMemoryPoolFree(memPool,message.anyPtr);
+								}
+								CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);									
 							}
 						}	
 

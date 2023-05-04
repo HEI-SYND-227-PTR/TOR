@@ -46,8 +46,11 @@ void MacSender(void *argument)
 				{
 					if(ttl >= 4)
 					{
+						
 						myMessage.type = MAC_ERROR;
-						myMessage.anyPtr = message.anyPtr;			
+											
+						sprintf(myMessage.anyPtr,"MAC error:\nStation %d does not respond !\r\n", f.c.control_field.daddr + 1);
+									
 						myMessage.addr = message.addr;
 						
 						returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,0);
@@ -59,7 +62,11 @@ void MacSender(void *argument)
 					}
 					else
 					{
-							osMemoryPoolFree(memPool,message.anyPtr);
+						if(f.c.control_field.daddr != MYADDRESS && f.c.control_field.daddr != BROADCAST_ADDRESS  )
+						{
+								osMemoryPoolFree(memPool,message.anyPtr);
+						}
+						
 					}							
 					// we can forget the message 
 					osMemoryPoolFree(memPool,original);	
@@ -100,8 +107,15 @@ void MacSender(void *argument)
 				fromStructToByteArray(f, memory);
 				myMessage.anyPtr = memory;
 			
-				returnPHY = osMessageQueuePut(queue_macB_id,&myMessage,NULL,0);
-				if(returnPHY != osOK){
+				if(gTokenInterface.connected == true || (f.c.control_field.dsap == TIME_SAPI))
+				{
+					returnPHY = osMessageQueuePut(queue_macB_id,&myMessage,NULL,0);
+					if(returnPHY != osOK){
+						osMemoryPoolFree(memPool,memory);
+					}
+				}
+				else
+				{
 					osMemoryPoolFree(memPool,memory);
 				}
 				
@@ -110,58 +124,70 @@ void MacSender(void *argument)
 		}
 		if(message.type == TOKEN) 
 		{		
+				// putting zeros everywhere
+				((uint8_t *)message.anyPtr)[MYADDRESS+1] = 0;
+				// token header
+				((uint8_t *)message.anyPtr)[0] = TOKEN_TAG;
+				// putting the correct value inside the token
+				//	time sapi is alwais active	
+				((uint8_t *)message.anyPtr)[MYADDRESS+1] = (1 << TIME_SAPI);
+								
+		
+				if(gTokenInterface.connected)
+				{
+					// chat sapi must be active
+					((uint8_t *)message.anyPtr)[MYADDRESS+1] |= (1 << CHAT_SAPI) ;
+				}
+				
+				token = message.anyPtr;	
+				
 				// we need to update the list of connected stations 
 				for(int i = 0; i <= 14 ; i++)
 				{
 					gTokenInterface.station_list[i] = ((uint8_t *)message.anyPtr)[i+1];
+					
 					//printf("station %d data : 0x%02x \r\n", i+1, ((uint8_t *)message.anyPtr)[i]);
 				}
-				token = message.anyPtr;					
-			
-					if(gTokenInterface.connected)
-					{
-						// chat sapi must be active
-						((uint8_t *)message.anyPtr)[MYADDRESS+1] |= (1 << CHAT_SAPI) ;
-					}
-					// creation of a message
-					myMessage.type = TOKEN_LIST;
-					
-					//updating the que of the LCD
-					returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,osWaitForever);
-					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+				// creation of a message
+				myMessage.type = TOKEN_LIST;
 				
-					struct queueMsg_t Buffer;
+				//updating the que of the LCD
+				returnPHY = osMessageQueuePut(queue_lcd_id,&myMessage,NULL,osWaitForever);
+				CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
 			
-					// Trying to read the Buffer queue 
-					osStatus_t  bufferStatus =	osMessageQueueGet(queue_macB_id,&Buffer,NULL,0);
-					original = Buffer.anyPtr;
-					// if message queue is empty 
-					if (bufferStatus == osOK)
+				struct queueMsg_t Buffer;
+		
+				// Trying to read the Buffer queue 
+				osStatus_t  bufferStatus =	osMessageQueueGet(queue_macB_id,&Buffer,NULL,0);
+				original = Buffer.anyPtr;
+				// if message queue is empty 
+				if (bufferStatus == osOK)
+				{
+					// sending the messages inside of the buffer 
+					copy = osMemoryPoolAlloc(memPool,osWaitForever);
+					memcpy(copy,Buffer.anyPtr,80);
+					Buffer.anyPtr = copy;
+					returnPHY = osMessageQueuePut(queue_phyS_id,&Buffer,NULL,osWaitForever);
+					if(returnPHY != osOK)
 					{
-						// sending the messages inside of the buffer 
-						copy = osMemoryPoolAlloc(memPool,osWaitForever);
-						memcpy(copy,Buffer.anyPtr,80);
-						Buffer.anyPtr = copy;
-						returnPHY = osMessageQueuePut(queue_phyS_id,&Buffer,NULL,osWaitForever);
-						if(returnPHY != osOK)
-						{
-							osMemoryPoolFree(memPool,Buffer.anyPtr);
-						}
-						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+						osMemoryPoolFree(memPool,Buffer.anyPtr);
 					}
-					else if(bufferStatus == osErrorResource) // the que is empty
-					{
-						// sending back the token
-						returnPHY = osMessageQueuePut(queue_phyS_id,&message,NULL,osWaitForever);
-						CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
-					}
-		}
+					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+				}
+				else if(bufferStatus == osErrorResource) // the que is empty
+				{
+					// sending back the token
+					returnPHY = osMessageQueuePut(queue_phyS_id,&message,NULL,osWaitForever);
+					CheckRetCode(returnPHY,__LINE__,__FILE__,CONTINUE);
+				}
+	}
 				
 		if(message.type == START)
 		{
 			gTokenInterface.connected = true;
 			
 		}
+		
 		// if the message is of type STOP
 		if(message.type == STOP)
 		{
