@@ -39,9 +39,13 @@ osMessageQueueId_t queue_timeS_id;
 osMessageQueueId_t queue_lcd_id;
 osMessageQueueId_t queue_keyboard_id;
 osMessageQueueId_t queue_usartR_id;
+osMessageQueueId_t queue_macB_id;
 
 const osMessageQueueAttr_t queue_macR_attr = {
 	.name = "MAC_RECEIVER"  	
+};
+const osMessageQueueAttr_t queue_macB_attr = {
+	.name = "MAC_BUFFER"  	
 };
 const osMessageQueueAttr_t queue_macS_attr = {
 	.name = "MAC_SENDER  "  	
@@ -283,6 +287,7 @@ void CheckRetCode(uint32_t retCode,uint32_t lineNumber,char * fileName,uint8_t m
 			while(1){}														// stays here forever						
     }
   }
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -342,7 +347,7 @@ uint32_t HAL_GetTick(void)
 int main(void)
 {	
 	SystemClock_Config();
-	
+	SystemCoreClockUpdate();
 	EventRecorderInitialize(EventRecordAll,0);
 	EventRecorderDisable(EventRecordAPI, 0xF1, 0xF1); // remove Kernel messages
 	EventRecorderDisable(EventRecordAll, 0xF4, 0xF4); // remove EventFlag messages
@@ -367,7 +372,7 @@ int main(void)
 	//------------------------------------------------------------------------------
 	// Create memory pool
 	//------------------------------------------------------------------------------
-	memPool = osMemoryPoolNew(8,MAX_BLOCK_SIZE,NULL);	
+	memPool = osMemoryPoolNew(12,MAX_BLOCK_SIZE,NULL);	
 	//------------------------------------------------------------------------------
 	// Create event flag
 	//------------------------------------------------------------------------------
@@ -375,6 +380,8 @@ int main(void)
 	//------------------------------------------------------------------------------
 	// Create queues
 	//------------------------------------------------------------------------------	
+	
+	queue_macB_id = osMessageQueueNew(3,sizeof(struct queueMsg_t),&queue_macB_attr); 	
 	queue_macR_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_macR_attr); 	
 	queue_phyS_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_phyS_attr); 	
 	queue_macS_id = osMessageQueueNew(2,sizeof(struct queueMsg_t),&queue_macS_attr); 	
@@ -409,3 +416,29 @@ int main(void)
   osKernelStart();
 }
 
+void fromStructToByteArray(DataFrame f, uint8_t* returnPtr)
+{
+	uint32_t sum; // for auto calc of cs
+	returnPtr[0] = f.c.control>>8;
+	returnPtr[1] = f.c.control;
+	returnPtr[2] = f.length;
+	sum = returnPtr[0] + returnPtr[1] + returnPtr[2];
+	for(int i = 0; i < f.length; i++ )
+	{
+		returnPtr[2 + 1 + i] = f.dataPtr[i];
+		sum += f.dataPtr[i];
+	}
+	
+	f.s.status_field.cs = sum;
+		
+	returnPtr[3+f.length] =  f.s.status;	
+}
+
+void fromByteArrayToStruct(uint8_t * dataPtr, DataFrame* frame)
+{	
+	frame->c.control = dataPtr[1] + ((uint16_t)(dataPtr[0]<<8));
+	frame->length = dataPtr[2];	
+	
+	frame->dataPtr = &dataPtr[3];
+	frame->s.status = dataPtr[frame->length+3];
+}

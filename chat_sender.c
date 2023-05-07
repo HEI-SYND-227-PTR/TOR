@@ -15,7 +15,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////
 /// \brief Called on interrupt keyboard received char
-/// \param The GPIO pin caused interrupt (GPIO_PIN_8)
+/// \param The GPIO pin caused interrupt (GPIO_PIN_8) 
 //////////////////////////////////////////////////////////////////////////////////
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -24,7 +24,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	 
 	if(GPIO_Pin == GPIO_PIN_8)
 	{
-		queueMsg.addr = ext_kbChar;
+		if(ext_kbChar != 0)
+		{
+			queueMsg.addr = ext_kbChar;
 		//----------------------------------------------------------------------------
 		// QUEUE SEND								
 		//----------------------------------------------------------------------------
@@ -34,6 +36,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			osPriorityNormal,
 			0);
 		CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);			 
+		}
+		
 	}
 }
 //////////////////////////////////////////////////////////////////////////////////
